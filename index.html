@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محرر الأكواد الاحترافي</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/dracula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/show-hint.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/dialog/dialog.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            direction: rtl;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .editor-container {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            background-color: #282a36;
+            order: 2;
+        }
+        .viewer-container {
+            width: 50%;
+            background-color: #fff;
+            order: 1;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #44475a;
+            color: #f8f8f2;
+        }
+        .toolbar select, .toolbar button {
+            margin-left: 10px;
+            padding: 5px;
+            background-color: #6272a4;
+            color: #f8f8f2;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .search-container {
+            display: flex;
+            padding: 10px;
+            background-color: #44475a;
+        }
+        #search-input {
+            flex-grow: 1;
+            padding: 5px 10px;
+            font-size: 14px;
+            border: none;
+            border-radius: 3px;
+            background-color: #282a36;
+            color: #f8f8f2;
+        }
+        #search-count, #next-result {
+            margin-right: 10px;
+            padding: 5px 10px;
+            background-color: #6272a4;
+            color: #f8f8f2;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .CodeMirror {
+            height: calc(100% - 100px);
+            font-size: 16px;
+        }
+        .output {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .color-picker {
+            width: 30px;
+            height: 30px;
+            border: none;
+            padding: 0;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .editor-container, .viewer-container {
+                width: 100%;
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-container">
+            <div class="toolbar">
+                <div>
+                    <select id="language-select">
+                        <option value="htmlmixed">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="php">PHP</option>
+                    </select>
+                    <select id="theme-select">
+                        <option value="dracula">Dracula</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="solarized">Solarized</option>
+                    </select>
+                    <select id="font-size">
+                        <option value="12">12px</option>
+                        <option value="14">14px</option>
+                        <option value="16" selected>16px</option>
+                        <option value="18">18px</option>
+                        <option value="20">20px</option>
+                    </select>
+                    <input type="color" id="color-picker" class="color-picker" value="#ffffff">
+                </div>
+                <div>
+                    <button id="save-btn">حفظ</button>
+                    <button id="save-preview-btn">حفظ المعاينة</button>
+                </div>
+            </div>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="ابحث في الكود...">
+                <span id="search-count"></span>
+                <button id="next-result">النتيجة التالية</button>
+            </div>
+            <textarea id="code-input" placeholder="أدخل الكود هنا"></textarea>
+        </div>
+        <div class="viewer-container">
+            <iframe id="output" class="output"></iframe>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/php/php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/css-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/javascript-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/search/search.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/dialog/dialog.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const codeInput = CodeMirror.fromTextArea(document.getElementById('code-input'), {
+                lineNumbers: true,
+                mode: 'htmlmixed',
+                theme: 'dracula',
+                autoCloseTags: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                extraKeys: {
+                    "Ctrl-Space": "autocomplete",
+                    "Ctrl-/": "toggleComment",
+                    "Ctrl-Z": "undo",
+                    "Ctrl-Y": "redo"
+                }
+            });
+
+            const output = document.getElementById('output');
+            const languageSelect = document.getElementById('language-select');
+            const themeSelect = document.getElementById('theme-select');
+            const fontSizeSelect = document.getElementById('font-size');
+            const saveBtn = document.getElementById('save-btn');
+            const searchInput = document.getElementById('search-input');
+            const searchCount = document.getElementById('search-count');
+            const nextResultBtn = document.getElementById('next-result');
+            const colorPicker = document.getElementById('color-picker');
+
+            let searchResults = [];
+            let currentSearchIndex = -1;
+
+            function updateOutput() {
+                const code = codeInput.getValue();
+                const mode = codeInput.getOption('mode');
+                
+                if (mode === 'htmlmixed') {
+                    output.srcdoc = code;
+                } else if (mode === 'css') {
+                    output.srcdoc = `<style>${code}</style>`;
+                } else if (mode === 'javascript') {
+                    output.srcdoc = `<script>${code}<\/script>`;
+                } else {
+                    output.srcdoc = `<pre>${code}</pre>`;
+                }
+            }
+
+            function performSearch() {
+                const query = searchInput.value;
+                searchResults = [];
+                currentSearchIndex = -1;
+                
+                if (query) {
+                    let cursor = codeInput.getSearchCursor(query);
+                    while (cursor.findNext()) {
+                        searchResults.push({
+                            from: cursor.from(),
+                            to: cursor.to()
+                        });
+                    }
+                }
+
+                searchCount.textContent = `${searchResults.length} نتيجة`;
+                highlightNextResult();
+            }
+
+            function highlightNextResult() {
+                codeInput.operation(() => {
+                    codeInput.getAllMarks().forEach(marker => marker.clear());
+                    
+                    if (searchResults.length > 0) {
+                        currentSearchIndex = (currentSearchIndex + 1) % searchResults.length;
+                        let result = searchResults[currentSearchIndex];
+                        codeInput.markText(result.from, result.to, {className: 'cm-searching'});
+                        codeInput.setSelection(result.from, result.to);
+                        codeInput.scrollIntoView({from: result.from, to: result.to}, 20);
+                    }
+                });
+            }
+
+            languageSelect.addEventListener('change', (e) => {
+                codeInput.setOption('mode', e.target.value);
+                updateOutput();
+            });
+
+            themeSelect.addEventListener('change', (e) => {
+                codeInput.setOption('theme', e.target.value);
+            });
+
+            fontSizeSelect.addEventListener('change', (e) => {
+                codeInput.getWrapperElement().style.fontSize = `${e.target.value}px`;
+            });
+
+            saveBtn.addEventListener('click', () => {
+                localStorage.setItem('savedCode', codeInput.getValue());
+                alert('تم حفظ الكود بنجاح');
+            });
+
+            codeInput.on('change', updateOutput);
+
+            searchInput.addEventListener('input', performSearch);
+            nextResultBtn.addEventListener('click', highlightNextResult);
+
+            colorPicker.addEventListener('change', (e) => {
+                const color = e.target.value;
+                codeInput.replaceSelection(color);
+            });
+
+            codeInput.on("inputRead", function(editor, change) {
+                if (change.text[0] === "." || change.text[0] === "<" || change.text[0] === " ") {
+                    editor.showHint({completeSingle: false});
+                }
+            });
+
+            // استعادة الكود المحفوظ
+            const savedCode = localStorage.getItem('savedCode');
+            if (savedCode) {
+                codeInput.setValue(savedCode);
+            }
+
+            // التحقق من وجود كود في الرابط
+            const urlParams = new URLSearchParams(window.location.search);
+            const sharedCode = urlParams.get('code');
+            if (sharedCode) {
+                codeInput.setValue(decodeURIComponent(sharedCode));
+            }
+
+            updateOutput();
+        });
+
+        const savePreviewBtn = document.getElementById('save-preview-btn');
+
+        savePreviewBtn.addEventListener('click', async () => {
+            const content = document.getElementById('output').srcdoc;
+            
+            // التحقق من دعم File System Access API
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: 'index.html',
+                        types: [{
+                            description: 'HTML File',
+                            accept: {'text/html': ['.html']},
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                    alert('تم حفظ الملف بنجاح!');
+                } catch (err) {
+                    console.error('خطأ في حفظ الملف:', err);
+                    alert('حدث خطأ أثناء محاولة حفظ الملف.');
+                }
+            } else {
+                // طريقة بديلة للمتصفحات التي لا تدعم File System Access API
+                const blob = new Blob([content], {type: 'text/html'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'index.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+    </script>
+</body>
+</html>
